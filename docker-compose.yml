@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: commerce
+      POSTGRES_PASSWORD: commerce_local_password
+      POSTGRES_DB: commerce_integration
+    ports:
+      - "5432:5432"
+    volumes:
+      - commerce_pg_data:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+volumes:
+  commerce_pg_data:

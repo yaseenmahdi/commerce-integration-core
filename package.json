@@ -1,0 +1,39 @@
+{
+  "name": "commerce-integration-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend integration platform for supplier catalog ingestion, policy enforcement, inventory processing, webhooks, and order/SLA monitoring across multiple commerce channels.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test src/policy/shipping.test.ts src/policy/sla.test.ts src/policy/product-research.test.ts src/connectors/listing-mapper.test.ts src/connectors/cj.test.ts src/webhooks/hmac.test.ts",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "worker:inventory": "tsx scripts/inventory-sync.ts",
+    "worker:sla": "tsx scripts/sla-watch.ts",
+    "research:products": "tsx scripts/product-research.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "node-cron": "^3.0.3",
+    "pg": "^8.13.1",
+    "pino": "^9.6.0",
+    "pino-http": "^10.4.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.4",
+    "@types/node-cron": "^3.0.11",
+    "@types/pg": "^8.11.11",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

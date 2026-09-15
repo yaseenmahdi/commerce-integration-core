@@ -1,0 +1,27 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+token.json
+
+# Runtime output
+output/
+logs/
+*.log
+scripts/.tmp/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.cursor/
