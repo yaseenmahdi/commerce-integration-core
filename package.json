@@ -12,13 +12,19 @@
     "start": "node dist/index.js",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test src/policy/shipping.test.ts src/policy/sla.test.ts src/policy/product-research.test.ts src/connectors/listing-mapper.test.ts src/connectors/cj.test.ts src/webhooks/hmac.test.ts",
+    "test": "tsx --test src/policy/shipping.test.ts src/policy/sla.test.ts src/policy/product-research.test.ts src/connectors/listing-mapper.test.ts src/connectors/cj.test.ts src/webhooks/hmac.test.ts src/serverless/handler.test.ts src/serverless/store.test.ts src/serverless/secret.test.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "worker:inventory": "tsx scripts/inventory-sync.ts",
     "worker:sla": "tsx scripts/sla-watch.ts",
-    "research:products": "tsx scripts/product-research.ts"
+    "research:products": "tsx scripts/product-research.ts",
+    "test:serverless:integration": "tsx --test src/serverless/integration.test.ts",
+    "serverless:local": "tsx scripts/serverless-local.ts",
+    "build:serverless": "esbuild src/serverless/handler.ts --bundle --platform=node --target=node22 --format=esm --out-extension:.js=.mjs --entry-names=index --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outdir=serverless-dist"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1161.0",
+    "@aws-sdk/client-secrets-manager": "^3.1161.0",
+    "@aws-sdk/lib-dynamodb": "^3.1161.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "helmet": "^8.0.0",
@@ -29,10 +35,12 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.164",
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.4",
     "@types/node-cron": "^3.0.11",
     "@types/pg": "^8.11.11",
+    "esbuild": "^0.28.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }
