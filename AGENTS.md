@@ -23,3 +23,7 @@
   Never force-push or push directly to main. AWS deployment, account connections,
   paid resources, repository settings changes, and PR merges require explicit
   user approval; local development and testing are permitted.
+- For serverless teaching, use `docs/SERVERLESS_STUDY_GUIDE.md`. Teach one topic
+  at a time and update its progress table and dated session log from actual
+  learner answers and activities. Keep AI-executed checks separate from learner
+  demonstrations, and preserve the historical evidence in `docs/VALIDATION.md`.
