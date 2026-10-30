@@ -162,7 +162,7 @@ export async function handler(event: APIGatewayProxyEventV2, context: Context): 
   if (!configuredHandler) {
     const tableName = process.env.WEBHOOK_TABLE_NAME;
     const secretArn = process.env.WEBHOOK_SECRET_ARN;
-    if (!tableName || !secretArn) return response(503, { ok: false, error: "temporarily_unavailable" });
+    if (!tableName?.trim() || !secretArn?.trim()) return response(503, { ok: false, error: "temporarily_unavailable" });
     // Bound each SDK attempt so ordinary network failures can return a retryable
     // response before the Lambda deadline. A hard timeout still relies on lease expiry.
     const clientOptions = {

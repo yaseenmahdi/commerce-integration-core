@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash, createHmac } from "node:crypto";
 import test from "node:test";
 import type { APIGatewayProxyEventV2, Context } from "aws-lambda";
-import { createWebhookHandler } from "./handler.js";
+import { createWebhookHandler, handler as lambdaHandler } from "./handler.js";
 import type { EventStore } from "./store.js";
 
 const secret = "local-test-secret-with-at-least-32-bytes";
@@ -297,4 +297,34 @@ test("serverless: secret service errors and non-Error failures are sanitized", a
   assert.equal(response.statusCode, 503);
   assert.equal(calls.length, 0);
   assert.ok(!JSON.stringify({ response, logs }).includes(secret));
+});
+
+test("serverless: missing or blank bootstrap configuration returns a safe response", async () => {
+  const originalTable = process.env.WEBHOOK_TABLE_NAME;
+  const originalSecretArn = process.env.WEBHOOK_SECRET_ARN;
+  const event = request();
+  // A wrong method avoids all SDK requests if a regression initializes clients.
+  // The configuration boundary must still reject the invocation before routing.
+  event.requestContext.http.method = "GET";
+  try {
+    for (const [tableName, secretArn] of [
+      [undefined, undefined],
+      ["local-test-table", undefined],
+      ["local-test-table", "   "],
+      ["   ", "local-test-secret-reference"],
+    ]) {
+      if (tableName === undefined) delete process.env.WEBHOOK_TABLE_NAME;
+      else process.env.WEBHOOK_TABLE_NAME = tableName;
+      if (secretArn === undefined) delete process.env.WEBHOOK_SECRET_ARN;
+      else process.env.WEBHOOK_SECRET_ARN = secretArn;
+      const response = await lambdaHandler(event, context);
+      assert.equal(response.statusCode, 503);
+      assert.deepEqual(JSON.parse(response.body!), { ok: false, error: "temporarily_unavailable" });
+    }
+  } finally {
+    if (originalTable === undefined) delete process.env.WEBHOOK_TABLE_NAME;
+    else process.env.WEBHOOK_TABLE_NAME = originalTable;
+    if (originalSecretArn === undefined) delete process.env.WEBHOOK_SECRET_ARN;
+    else process.env.WEBHOOK_SECRET_ARN = originalSecretArn;
+  }
 });
