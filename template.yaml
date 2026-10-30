@@ -1,0 +1,133 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Signed order webhooks with leased DynamoDB idempotency. Deploy only after approval.
+
+Parameters:
+  WebhookSecretArn:
+    Type: String
+    Description: ARN of an existing Secrets Manager secret containing a raw HMAC secret of at least 32 characters. Use the AWS managed encryption key.
+    AllowedPattern: '^arn:aws[a-zA-Z-]*:secretsmanager:[a-z0-9-]+:[0-9]{12}:secret:[a-zA-Z0-9/_+=.@-]+-[a-zA-Z0-9]{6}$'
+    ConstraintDescription: Supply the full Secrets Manager secret ARN, including its six-character suffix.
+
+Resources:
+  WebhookTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  WebhookLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-webhook'
+      RetentionInDays: 14
+
+  HttpApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 14
+
+  WebhookRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WebhookPersistenceAndSecret
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: EventStore
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                Resource: !GetAtt WebhookTable.Arn
+              - Sid: SigningSecret
+                Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref WebhookSecretArn
+              - Sid: ApplicationLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-webhook:log-stream:*'
+
+  WebhookApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: '$default'
+      AccessLogSettings:
+        DestinationArn: !GetAtt HttpApiLogGroup.Arn
+        # No payloads, signatures, authorization headers, or query strings in access logs.
+        Format: '{"requestId":"$context.requestId","routeKey":"$context.routeKey","status":"$context.status","responseLength":"$context.responseLength","requestTimeEpoch":"$context.requestTimeEpoch"}'
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 10
+        ThrottlingRateLimit: 5
+
+  WebhookFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: WebhookLogGroup
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      # Keep the stack name at most 56 characters to satisfy Lambda's 64-character limit.
+      FunctionName: !Sub '${AWS::StackName}-webhook'
+      CodeUri: .
+      Handler: index.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      Timeout: 10
+      MemorySize: 256
+      ReservedConcurrentExecutions: 5
+      Role: !GetAtt WebhookRole.Arn
+      LoggingConfig:
+        LogFormat: JSON
+        ApplicationLogLevel: INFO
+        SystemLogLevel: INFO
+      Environment:
+        Variables:
+          WEBHOOK_TABLE_NAME: !Ref WebhookTable
+          WEBHOOK_SECRET_ARN: !Ref WebhookSecretArn
+          LOG_LEVEL: info
+      Events:
+        OrderWebhook:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref WebhookApi
+            Path: /webhooks/orders
+            Method: POST
+            PayloadFormatVersion: '2.0'
+
+Outputs:
+  WebhookUrl:
+    Description: Public HTTPS endpoint; requires a valid body HMAC.
+    Value: !Sub 'https://${WebhookApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/webhooks/orders'
+  WebhookTableName:
+    Description: Retained on stack deletion. Delete separately only after reviewing stored events.
+    Value: !Ref WebhookTable
+  WebhookLogGroupName:
+    Value: !Ref WebhookLogGroup
+  HttpApiLogGroupName:
+    Value: !Ref HttpApiLogGroup
