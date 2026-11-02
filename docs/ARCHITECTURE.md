@@ -74,3 +74,40 @@ flowchart LR
 ## Scope
 
 The repository implements catalog normalization, policy evaluation, persistence, webhook handling, payload preparation, and SLA monitoring. It intentionally does not enable live marketplace publishing or supplier purchasing by default.
+
+## Additive serverless intake
+
+The AWS extension is a separate persistence boundary for canonical `order.created` notifications:
+
+```mermaid
+sequenceDiagram
+  participant Sender
+  participant API as API Gateway HTTP API
+  participant Lambda
+  participant Secrets as Secrets Manager
+  participant DB as DynamoDB
+  Sender->>API: POST signed raw JSON envelope
+  API->>Lambda: Payload-format v2 event
+  Lambda->>Secrets: Load/cache existing HMAC key
+  Lambda->>Lambda: Verify bytes, then validate envelope
+  Lambda->>DB: Conditional lease acquisition
+  alt New or recoverable event
+    Lambda->>DB: Atomically store event and COMPLETED status
+    Lambda-->>API: 200 duplicate=false
+  else Already completed with same raw-body hash
+    Lambda-->>API: 200 duplicate=true
+  else Active/incomplete event or storage failure
+    Lambda-->>API: 503, sender retries
+  else Same event ID with different raw bytes
+    Lambda-->>API: 409 event_conflict
+  end
+  API-->>Sender: HTTP response
+```
+
+`src/serverless/handler.ts` reuses the original timing-safe base64 HMAC verifier without importing the Express server, its configuration loader, cron jobs, or PostgreSQL pool. The endpoint uses a custom `x-commerce-signature` header and canonical signed envelope; an adapter is required for native marketplace messages.
+
+The DynamoDB partition key is the signed UUID. A 30-second owner-fenced lease protects incomplete work, and a single atomic completion update stores the validated event. Failures remain retryable; a row's mere existence never proves completion. Completed records have a seven-day TTL, while failed/incomplete records remain available for recovery. This design performs durable intake only and has no relational bridge or external order side effect.
+
+The [serverless guide](SERVERLESS.md) explains IAM scope, secret caching, retry outcomes, replay boundaries, deployment approval, cost/cleanup considerations, local testing, and the differences from the original long-running Express/PostgreSQL architecture.
+
+Deployment and evidence collection follow [AWS_DEPLOYMENT_EVIDENCE.md](AWS_DEPLOYMENT_EVIDENCE.md). The [demo](../scripts/serverless-demo.ts) exercises the public HTTP contract after approval; DynamoDB and CloudWatch require separate read-only verification. [Portfolio claims](PORTFOLIO.md) and the [study guide](SERVERLESS_STUDY_GUIDE.md) preserve the boundary between implementation, local tests and live AWS observations. EventBridge, Step Functions and Bedrock are optional study topics only.

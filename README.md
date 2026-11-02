@@ -117,3 +117,43 @@ This repository prepares and stores channel-specific listing payloads and proces
 ## Why this project
 
 Commerce APIs often disagree on data shape, authentication, fulfillment rules, and lifecycle state. This project explores the backend engineering required to put a stable integration layer between those systems rather than coupling application logic directly to any single external API.
+
+## AWS serverless webhook extension
+
+The original Express/PostgreSQL application remains available. The additive serverless path accepts a custom signed `order.created` envelope through API Gateway HTTP API, verifies its exact raw bytes in a TypeScript Lambda, and durably records it in DynamoDB. It does not accept native marketplace payloads or place orders.
+
+```mermaid
+flowchart LR
+  Sender[Signed canonical event] --> Gateway[API Gateway HTTP API]
+  Gateway --> Lambda[TypeScript Lambda]
+  Secrets[Secrets Manager HMAC key] --> Lambda
+  Lambda --> DynamoDB[(DynamoDB: leased receipt and completed event)]
+  Lambda --> Logs[CloudWatch correlation logs]
+```
+
+HMAC-SHA256 authenticates the signed body, including the event UUID. Conditional DynamoDB writes select one processing owner; completion atomically stores the notification. Identical completed events return a duplicate acknowledgement, unfinished events return retryable `503` responses, and reused IDs with different raw bytes return `409`. Completion rows expire through a seven-day asynchronous TTL, so permanent replay prevention is not promised.
+
+Install and verify from the repository root:
+
+```bash
+npm ci
+npm run typecheck
+npm test
+npm run build
+npm run build:serverless
+npm run validate:serverless
+```
+
+The [serverless guide](docs/SERVERLESS.md) contains the exact payload/signature contract, DynamoDB Local commands, secret configuration, architecture tradeoffs, CloudWatch queries, deployment/teardown commands, cost and security considerations, known limitations, and a learning walkthrough. [Validation evidence](docs/VALIDATION.md) distinguishes checks actually run from live AWS checks still pending.
+
+**Live AWS deployment is pending explicit approval.** After reviewing the account, region, secret, IAM changes, resources, and charges, deployment uses `sam deploy --guided` with the ARN of an existing raw-text Secrets Manager key. The template creates an HTTP API, Lambda, scoped execution role, DynamoDB table, and log groups; deployment can also create an artifact bucket. Throttling is not a spending cap, and the table is retained on stack deletion until separately reviewed for removal.
+
+The existing supplier-flag coercion, PostgreSQL initialization/migration limitations, and `npm start` output-path issue remain documented follow-up work; this extension does not change them.
+
+Deployment preparation and portfolio evidence:
+
+- [AWS deployment/evidence runbook](docs/AWS_DEPLOYMENT_EVIDENCE.md): approval prerequisites, manual SAM deployment, five-case synthetic test, database/log verification, screenshots and cleanup.
+- [Living study guide](docs/SERVERLESS_STUDY_GUIDE.md): source-linked exercises, separate answers and honest learning progress; optional unimplemented service modules.
+- [Portfolio summary](docs/PORTFOLIO.md): supported claims and AWS evidence still needed.
+
+`npm run validate:serverless` runs SAM lint/build with disposable local configuration, independent of inherited AWS profiles. Install SAM CLI 1.171.0 and Make first. After an approved deployment, `npm run serverless:demo` checks the real endpoint; follow the runbook for secure key loading. No live deployment is claimed.

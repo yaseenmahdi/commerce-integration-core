@@ -1,0 +1,17 @@
+version = 0.1
+
+[default.global.parameters]
+stack_name = "commerce-webhook-dev"
+
+[default.build.parameters]
+cached = true
+
+[default.validate.parameters]
+lint = true
+
+# Deployment remains pending approval. Supply region and the existing secret ARN
+# with `sam deploy --guided` only after the account, costs, and IAM are reviewed.
+[default.deploy.parameters]
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+resolve_s3 = true
