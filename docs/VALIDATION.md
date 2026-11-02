@@ -85,3 +85,63 @@ guard checks only `suppliers` and cannot diagnose/repair a partial schema. The
 existing supplier boolean and `npm start` path defects remain unchanged. See the
 [serverless guide](SERVERLESS.md) for replay, retry, retention, cost, and rotation
 limitations.
+
+## Completion validation — November 1, 2026 (America/Denver)
+
+Executed by the AI in the resumed managed Linux cloud environment at
+`/workspace/commerce-integration-core` (host clock November 2 UTC). Started from
+feature head `cfc0906b3ac20ed6fb4ca0846294bef7c62cc40e`; PR #1 confirmed open and
+unmerged. Initial local checkout was baseline `9525435` on `work`; fetched and
+switched to the existing remote feature branch without recreating source.
+
+| Check | Observed result |
+| --- | --- |
+| `npm ci --cache /tmp/commerce-npm-cache --strict-ssl=true` | Passed; 151 packages; unchanged lockfile |
+| `npm run typecheck` | Passed, including demonstration script/tests |
+| `npm test` | 97 passed, 0 failed/cancelled/skipped; preserved 94 plus 3 demo tests |
+| `npm run build` | Passed |
+| `npm run build:serverless` | Passed; ~1.4 MiB bundle |
+| `DYNAMODB_LOCAL_ENDPOINT=http://127.0.0.1:8000 npm run test:serverless:integration` | 10 passed, 0 failed/cancelled/skipped |
+| `DYNAMODB_LOCAL_ENDPOINT=http://127.0.0.1:8000 npm run serverless:local` | Acceptance, duplicate and persisted event equality passed; temporary table removed |
+| `PATH=/tmp/commerce-sam-venv/bin:$PATH AWS_PROFILE=deliberately-missing npm run validate:serverless` | SAM lint and Makefile build passed, independent of inherited missing profile |
+| Import `.aws-sam/build/WebhookFunction/index.mjs` under Node 24 | Passed; missing configuration safely returned 503 |
+| SAM artifact inventory | Exactly `index.mjs`; no config, credentials or source copied into function artifact |
+
+Environment versions: Node 24.19.0, npm 11.9.0, SAM CLI 1.171.0 (temporary Python
+venv), Docker 28.4.0. DynamoDB Local used the same digest pinned above, a disposable
+in-memory container bound to 127.0.0.1:8000, and explicit dummy local credentials.
+No AWS resources were used for these checks. The new demo suite invokes the real
+handler through an injected transport and verifies exact retry-buffer identity,
+correct signature/schema/conflict responses, fail-fast behavior, bounded
+responses and exclusion of secret/signature/payload content from results. It
+has not sent requests to a deployed endpoint.
+
+The initial plain network command could not reach the proxy inside the command
+sandbox; using the execution tool's network permission restored normal proxy
+access. An initial npm install hit the read-only home cache; the writable `/tmp`
+cache resolved it. A first typecheck caught an optional test response status;
+that test adapter was corrected before the successful runs above. Initial tsx
+execution could not create its IPC socket in the restricted command sandbox;
+normal network-enabled execution passed. These setup failures are not AWS defects.
+
+The previous profile-dependent SAM failure is resolved for local validation by
+`scripts/sam-offline.sh`: temporary empty config/credential files, deliberately
+dummy keys, no selected profile, metadata lookup disabled, a writable SAM state
+directory, and only validate/build operations allowed. Real deployment uses the
+operator's real approved profile separately. No injected identity was replaced;
+this environment reports no configured outbound identities or secret bindings.
+
+Focused source/template review reconfirmed authentication before parsing,
+conditional acquisition, consistent conflict reads, completion/failure owner
+fences, atomic event persistence, scoped table/secret/log IAM, and SAM's HttpApi
+route declaration that generates invocation permission. Live generated policy
+and log-delivery behavior still require deployed inspection. No material intake
+implementation defect was found requiring architectural changes.
+
+Historical validations above and in the study guide remain unchanged. The
+original Express/PostgreSQL source and tests were preserved; workers/HTTP probes
+were not rerun in this completion session. The earlier Node 22 import remains
+historical; this session's import ran under Node 24. Live AWS account selection,
+IAM, endpoint transport, Secrets Manager, CloudWatch, TTL deletion, PITR restore,
+load/cost behavior and teardown remain unverified. Follow
+[AWS_DEPLOYMENT_EVIDENCE.md](AWS_DEPLOYMENT_EVIDENCE.md) after explicit approval.

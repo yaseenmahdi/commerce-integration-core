@@ -12,14 +12,16 @@
     "start": "node dist/index.js",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test src/policy/shipping.test.ts src/policy/sla.test.ts src/policy/product-research.test.ts src/connectors/listing-mapper.test.ts src/connectors/cj.test.ts src/webhooks/hmac.test.ts src/serverless/handler.test.ts src/serverless/store.test.ts src/serverless/secret.test.ts",
+    "test": "tsx --test src/policy/shipping.test.ts src/policy/sla.test.ts src/policy/product-research.test.ts src/connectors/listing-mapper.test.ts src/connectors/cj.test.ts src/webhooks/hmac.test.ts src/serverless/handler.test.ts src/serverless/store.test.ts src/serverless/secret.test.ts scripts/serverless-demo.test.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "worker:inventory": "tsx scripts/inventory-sync.ts",
     "worker:sla": "tsx scripts/sla-watch.ts",
     "research:products": "tsx scripts/product-research.ts",
     "test:serverless:integration": "tsx --test src/serverless/integration.test.ts",
     "serverless:local": "tsx scripts/serverless-local.ts",
-    "build:serverless": "esbuild src/serverless/handler.ts --bundle --platform=node --target=node22 --format=esm --out-extension:.js=.mjs --entry-names=index --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outdir=serverless-dist"
+    "build:serverless": "esbuild src/serverless/handler.ts --bundle --platform=node --target=node22 --format=esm --out-extension:.js=.mjs --entry-names=index --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outdir=serverless-dist",
+    "serverless:demo": "tsx scripts/serverless-demo.ts",
+    "validate:serverless": "bash scripts/sam-offline.sh validate --lint && bash scripts/sam-offline.sh build"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1161.0",

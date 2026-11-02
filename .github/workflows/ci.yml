@@ -43,10 +43,10 @@ jobs:
           SAM_CLI_TELEMETRY: "0"
           AWS_EC2_METADATA_DISABLED: "true"
           AWS_DEFAULT_REGION: us-east-1
-        run: sam validate --lint
+        run: bash scripts/sam-offline.sh validate --lint
       - name: Build SAM artifact
         env:
           SAM_CLI_TELEMETRY: "0"
           AWS_EC2_METADATA_DISABLED: "true"
           AWS_DEFAULT_REGION: us-east-1
-        run: sam build
+        run: bash scripts/sam-offline.sh build

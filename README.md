@@ -141,8 +141,7 @@ npm run typecheck
 npm test
 npm run build
 npm run build:serverless
-sam validate --lint
-sam build
+npm run validate:serverless
 ```
 
 The [serverless guide](docs/SERVERLESS.md) contains the exact payload/signature contract, DynamoDB Local commands, secret configuration, architecture tradeoffs, CloudWatch queries, deployment/teardown commands, cost and security considerations, known limitations, and a learning walkthrough. [Validation evidence](docs/VALIDATION.md) distinguishes checks actually run from live AWS checks still pending.
@@ -150,3 +149,11 @@ The [serverless guide](docs/SERVERLESS.md) contains the exact payload/signature 
 **Live AWS deployment is pending explicit approval.** After reviewing the account, region, secret, IAM changes, resources, and charges, deployment uses `sam deploy --guided` with the ARN of an existing raw-text Secrets Manager key. The template creates an HTTP API, Lambda, scoped execution role, DynamoDB table, and log groups; deployment can also create an artifact bucket. Throttling is not a spending cap, and the table is retained on stack deletion until separately reviewed for removal.
 
 The existing supplier-flag coercion, PostgreSQL initialization/migration limitations, and `npm start` output-path issue remain documented follow-up work; this extension does not change them.
+
+Deployment preparation and portfolio evidence:
+
+- [AWS deployment/evidence runbook](docs/AWS_DEPLOYMENT_EVIDENCE.md): approval prerequisites, manual SAM deployment, five-case synthetic test, database/log verification, screenshots and cleanup.
+- [Living study guide](docs/SERVERLESS_STUDY_GUIDE.md): source-linked exercises, separate answers and honest learning progress; optional unimplemented service modules.
+- [Portfolio summary](docs/PORTFOLIO.md): supported claims and AWS evidence still needed.
+
+`npm run validate:serverless` runs SAM lint/build with disposable local configuration, independent of inherited AWS profiles. Install SAM CLI 1.171.0 and Make first. After an approved deployment, `npm run serverless:demo` checks the real endpoint; follow the runbook for secure key loading. No live deployment is claimed.

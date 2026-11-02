@@ -140,8 +140,7 @@ npm run typecheck
 npm test
 npm run build
 npm run build:serverless
-sam validate --lint
-sam build
+npm run validate:serverless
 ```
 
 AWS SAM CLI, Make, and the repository's npm dependencies are required for SAM packaging. These commands do not deploy resources. `npm test` includes the preserved original tests and the serverless unit tests. `npm run build` builds the existing TypeScript project; `build:serverless` separately bundles the Lambda entry point. SAM uses the Makefile to place `index.mjs` in the function artifact directory. Dependencies needed by the handler are bundled rather than assumed to be available in AWS's runtime SDK.
@@ -174,8 +173,7 @@ Before deployment, agree on the AWS account, region, stack name, sender, retenti
 Only after approval:
 
 ```bash
-sam validate --lint
-sam build
+npm run validate:serverless
 sam deploy --guided --region '<approved-region>' \
   --parameter-overrides WebhookSecretArn='<existing-secret-arn>'
 ```
@@ -248,3 +246,11 @@ Short quiz:
 6. Would adding a supplier purchase call between lease acquisition and completion preserve exactly-once purchasing?
 
 Answers: (1) The HMAC and identity hash cover exact raw bytes. (2) Its payload may not have been durably completed. (3) A later retry reads `COMPLETED`; cleanup cannot revert it. (4) No; resources and actions are scoped. (5) Yes; there is no permanent replay ledger or freshness check. (6) No; cross-service side effects need their own durable idempotency/recovery design.
+
+## Completion and evidence references
+
+Use [AWS_DEPLOYMENT_EVIDENCE.md](AWS_DEPLOYMENT_EVIDENCE.md) for exact approval-gated deployment steps, synthetic endpoint demonstration, separate storage/log inspection, evidence placeholders, inventory and cleanup. The [portfolio summary](PORTFOLIO.md) separates supported claims from pending AWS observations, and the [living study guide](SERVERLESS_STUDY_GUIDE.md) explains the actual implementation without treating AI checks as learner mastery.
+
+For local SAM initialization problems, use `npm run validate:serverless`. Its validate/build-only wrapper isolates missing inherited profiles in a temporary directory, uses dummy local credentials, disables metadata lookup and telemetry, then removes the directory. It does not change your shell profile or authorize a deployment. CI uses the same wrapper.
+
+The deployed demo retains exact synthetic bytes in memory for the retry, signs changed bytes for conflict/schema checks, refuses redirects and nonstandard endpoint URLs, bounds response size/time, and stops on unexpected results. It logs only synthetic IDs and case/status/pass results. It does not verify DynamoDB or CloudWatch directly; perform those separate runbook steps.
